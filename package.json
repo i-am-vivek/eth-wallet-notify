@@ -1,0 +1,15 @@
+{
+  "name": "eth_wallet_notify",
+  "version": "1.0.0",
+  "description": "",
+  "main": "eth_wallet_notify.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mysql": "^2.15.0",
+    "web3": "^1.0.0-beta.34"
+  }
+}
