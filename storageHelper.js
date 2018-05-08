@@ -1,28 +1,16 @@
 
 let mysql, connection, web3;
-var Web3 = require('web3');
-mysql = require('mysql');
+let Web3 = require('web3');
+let queryHelper = require('./query');
+const db = require('mysql-node-query-builder');
 
 if (web3 !== undefined) {
     web3 = new Web3(web3.currentProvider);
 } else {
     web3 = new Web3(new Web3.providers.WebsocketProvider("ws://127.0.0.1:8546"));
 }
-connection = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'root',
-    database: 'dbname'
-});
-connection.connect();
-function twoDigits(d) {
-    if (0 <= d && d < 10) return "0" + d.toString();
-    if (-10 < d && d < 0) return "-0" + (-1 * d).toString();
-    return d.toString();
-}
-Date.prototype.toMysqlFormat = function () {
-    return this.getUTCFullYear() + "-" + twoDigits(1 + this.getUTCMonth()) + "-" + twoDigits(this.getUTCDate()) + " " + twoDigits(this.getHours()) + ":" + twoDigits(this.getUTCMinutes()) + ":" + twoDigits(this.getUTCSeconds());
-};
+
+
 function generateInsertQuery(transaction) {
     console.log('TRANSACTION BLOCK 3', transaction)
     var transaction_id = transaction.hash;
@@ -43,28 +31,28 @@ function generateInsertQuery(transaction) {
     console.log('\nINSERTION QUERY = ' + query);
     return query;
 }
-function generateFindQuery(transaction) {
-    var fromAddress = transaction.from;
-    var toAddress = transaction.to;
-    console.log('TRANSACTION BLOCK 2', transaction)
-    var findQuery = "SELECT * from bitcoin_addresses WHERE address = ";
-    findQuery = findQuery + "'" + toAddress + "'";
-    console.log('\nFIND QUERY = ' + findQuery);
-    return findQuery;
+const getAddressObj = async (address) => {
+    return await db.table('cj_bitcoin_address').where('address', address).get();
 }
-function processTransaction(transaction) {
-    console.log('TRANSACTION BLOCK 1', transaction)
-    connection.query(generateFindQuery(transaction), function (error, results) {
-        if (error) throw error;
-        if (results && results.length > 0) {
-            connection.query(generateInsertQuery(transaction), function (error, result) {
-                if (error) throw error;
-                console.log('Transaction inserted = ', result);
-            });
-        } else {
-            console.log("NO RESULTS FOUND");
+const processTransaction = async (transaction) => {
+    try {
+        let addressObj = await getAddressObj(transaction.to);
+        let result;
+        if (addressObj && addressObj.length) {
+            result = await db.update(
+                { ETH: web3.utils.fromWei(transaction.value) },
+                { user_id: addressObj[0].user_id }
+            );
+            console.log('\nUPDATE INFORMATION = ', result);
         }
-    });
+        else {
+            console.log('NO ADDRESS FOUND\n');
+
+        }
+    }
+    catch (ex) {
+        console.log('\nPROCESS TRANSACTION ERROR = ', ex);
+    }
 }
 function storeTransactionIfNotExist(error, result) {
     if (!error && result !== null && result) {
